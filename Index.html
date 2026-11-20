@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#121214">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Guitar Tuner">
+  <title>Guitar Tuner</title>
+
+  <link id="app-icon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%231e1e24'/%3E%3Cg transform='translate(256, 256) rotate(45) translate(-256, -256)'%3E%3Crect x='242' y='70' width='28' height='210' rx='6' fill='%23d4a373'/%3E%3Crect x='236' y='40' width='40' height='45' rx='8' fill='%238d5524'/%3E%3Ccircle cx='228' cy='52' r='6' fill='%23ccc'/%3E%3Ccircle cx='228' cy='72' r='6' fill='%23ccc'/%3E%3Ccircle cx='284' cy='52' r='6' fill='%23ccc'/%3E%3Ccircle cx='284' cy='72' r='6' fill='%23ccc'/%3E%3Cpath d='M256 240 C190 240, 175 295, 200 330 C165 365, 160 450, 256 450 C352 450, 347 365, 312 330 C337 295, 322 240, 256 240 Z' fill='%23e07a5f'/%3E%3Ccircle cx='256' cy='315' r='32' fill='%232b1d0e' stroke='%23f4f1de' stroke-width='5'/%3E%3Crect x='226' y='385' width='60' height='14' rx='4' fill='%233d2b1f'/%3E%3Cline x1='248' y1='75' x2='248' y2='385' stroke='%23ffffffaa' stroke-width='2'/%3E%3Cline x1='256' y1='75' x2='256' y2='385' stroke='%23ffffffaa' stroke-width='2'/%3E%3Cline x1='264' y1='75' x2='264' y2='385' stroke='%23ffffffaa' stroke-width='2'/%3E%3C/g%3E%3C/svg%3E">
+
+  <style>
+    :root {
+      --bg: #121214;
+      --card: #1e1e24;
+      --text: #f4f4f6;
+      --muted: #8e8e98;
+      --accent: #f59e0b;
+      --in-tune: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      min-height: 100vh;
+      width: 100%;
+      padding: 24px 16px;
+    }
+
+    .tuner-box {
+      background: var(--card);
+      width: 100%;
+      max-width: 380px;
+      border-radius: 24px;
+      padding: 36px 20px;
+      text-align: center;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+      border: 1px solid #2c2c35;
+    }
+
+    .note-display {
+      font-size: 5.5rem;
+      font-weight: 800;
+      line-height: 1;
+      margin: 12px 0;
+      color: var(--text);
+      transition: color 0.15s ease;
+    }
+
+    .note-display.tuned { color: var(--in-tune); text-shadow: 0 0 25px rgba(16, 185, 129, 0.4); }
+
+    .freq-display { font-size: 1rem; color: var(--muted); margin-bottom: 24px; font-variant-numeric: tabular-nums; }
+
+    .meter-container {
+      position: relative;
+      width: 100%;
+      height: 60px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .meter-scale {
+      width: 100%;
+      height: 6px;
+      background: #2c2c35;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .center-tick {
+      position: absolute;
+      left: 50%;
+      top: -12px;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 30px;
+      background: var(--in-tune);
+      border-radius: 2px;
+    }
+
+    .needle {
+      position: absolute;
+      left: 50%;
+      top: -16px;
+      width: 6px;
+      height: 38px;
+      background: var(--accent);
+      border-radius: 3px;
+      transform: translateX(-50%);
+      transition: left 0.08s ease-out, background-color 0.15s;
+    }
+
+    .status-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      height: 24px;
+      color: var(--muted);
+    }
+
+    .strings-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .string-btn {
+      background: var(--card);
+      border: 1px solid #2c2c35;
+      color: var(--text);
+      padding: 16px 0;
+      border-radius: 14px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .string-btn.active { border-color: var(--in-tune); background: rgba(16, 185, 129, 0.15); color: var(--in-tune); }
+
+    #start-btn {
+      width: 100%;
+      max-width: 380px;
+      padding: 18px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 16px;
+      background: var(--accent);
+      color: #121214;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+    }
+
+    #start-btn.listening { background: #2c2c35; color: var(--text); box-shadow: none; }
+  </style>
+</head>
+<body>
+
+  <main id="app">
+    <div class="tuner-box">
+      <div class="status-text" id="status">Tap Start to Tune</div>
+      <div class="note-display" id="note">--</div>
+      <div class="freq-display" id="freq">0.0 Hz</div>
+
+      <div class="meter-container">
+        <div class="meter-scale">
+          <div class="center-tick"></div>
+          <div class="needle" id="needle"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="strings-grid" id="strings">
+      <button class="string-btn" data-freq="82.41" data-midi="40">E6</button>
+      <button class="string-btn" data-freq="110.00" data-midi="45">A5</button>
+      <button class="string-btn" data-freq="146.83" data-midi="50">D4</button>
+      <button class="string-btn" data-freq="196.00" data-midi="55">G3</button>
+      <button class="string-btn" data-freq="246.94" data-midi="59">B2</button>
+      <button class="string-btn" data-freq="329.63" data-midi="64">E1</button>
+    </div>
+
+    <button id="start-btn">Start Microphone</button>
+  </main>
+
+  <script>
+    const iconSvg = document.getElementById('app-icon').href;
+    const manifest = {
+      name: "Guitar Tuner",
+      short_name: "Tuner",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#121214",
+      theme_color: "#121214",
+      icons: [{ src: iconSvg, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    manifestLink.href = URL.createObjectURL(manifestBlob);
+    document.head.appendChild(manifestLink);
+
+    const guitarStringMap = { 40: "E6", 45: "A5", 50: "D4", 55: "G3", 59: "B2", 64: "E1" };
+    const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    let audioCtx = null;
+    let analyser = null;
+    let isListening = false;
+    let buf = new Float32Array(2048);
+
+    const startBtn = document.getElementById('start-btn');
+    const noteEl = document.getElementById('note');
+    const freqEl = document.getElementById('freq');
+    const statusEl = document.getElementById('status');
+    const needleEl = document.getElementById('needle');
+    const stringBtns = document.querySelectorAll('.string-btn');
+
+    stringBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(parseFloat(btn.dataset.freq), audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1.5);
+      });
+    });
+
+    startBtn.addEventListener('click', async () => {
+      if (isListening) {
+        location.reload();
+        return;
+      }
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false } });
+        const source = audioCtx.createMediaStreamSource(stream);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+
+        isListening = true;
+        startBtn.textContent = "Stop Tuner";
+        startBtn.classList.add('listening');
+        statusEl.textContent = "Pluck a string...";
+        updatePitch();
+      } catch (err) {
+        statusEl.textContent = "Microphone access denied";
+      }
+    });
+
+    function autoCorrelate(buffer, sampleRate) {
+      let size = buffer.length;
+      let rms = 0;
+      for (let i = 0; i < size; i++) rms += buffer[i] * buffer[i];
+      rms = Math.sqrt(rms / size);
+      if (rms < 0.015) return -1;
+
+      let r1 = 0, r2 = size - 1, thres = 0.2;
+      for (let i = 0; i < size / 2; i++) if (Math.abs(buffer[i]) < thres) { r1 = i; break; }
+      for (let i = 1; i < size / 2; i++) if (Math.abs(buffer[size - i]) < thres) { r2 = size - i; break; }
+
+      buffer = buffer.slice(r1, r2);
+      size = buffer.length;
+
+      let c = new Array(size).fill(0);
+      for (let i = 0; i < size; i++)
+        for (let j = 0; j < size - i; j++)
+          c[i] = c[i] + buffer[j] * buffer[j + i];
+
+      let d = 0;
+      while (c[d] > c[d + 1]) d++;
+      let maxval = -1, maxpos = -1;
+      for (let i = d; i < size; i++) {
+        if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+      }
+      let T0 = maxpos;
+      let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+      let a = (x1 + x3 - 2 * x2) / 2;
+      let b = (x3 - x1) / 2;
+      if (a) T0 = T0 - b / (2 * a);
+
+      return sampleRate / T0;
+    }
+
+    function updatePitch() {
+      analyser.getFloatTimeDomainData(buf);
+      let ac = autoCorrelate(buf, audioCtx.sampleRate);
+
+      if (ac !== -1 && ac > 60 && ac < 1000) {
+        let noteNum = 12 * (Math.log(ac / 440) / Math.log(2)) + 69;
+        let roundedNote = Math.round(noteNum);
+        let noteName = noteStrings[roundedNote % 12];
+        let cents = Math.floor((noteNum - roundedNote) * 100);
+
+        noteEl.textContent = guitarStringMap[roundedNote] || noteName;
+        freqEl.textContent = ac.toFixed(1) + " Hz";
+
+        stringBtns.forEach(b => b.classList.toggle('active', parseInt(b.dataset.midi) === roundedNote));
+
+        let clampedCents = Math.max(-50, Math.min(50, cents));
+        needleEl.style.left = (50 + clampedCents) + "%";
+
+        if (Math.abs(cents) <= 5) {
+          noteEl.classList.add('tuned');
+          needleEl.style.backgroundColor = 'var(--in-tune)';
+          statusEl.textContent = "In Tune!";
+          statusEl.style.color = 'var(--in-tune)';
+        } else {
+          noteEl.classList.remove('tuned');
+          needleEl.style.backgroundColor = 'var(--accent)';
+          statusEl.style.color = 'var(--muted)';
+          statusEl.textContent = cents < 0 ? "Too Flat (Tune Up)" : "Too Sharp (Tune Down)";
+        }
+      }
+      if (isListening) requestAnimationFrame(updatePitch);
+    }
+  </script>
+</body>
+</html>
